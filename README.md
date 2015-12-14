@@ -48,6 +48,10 @@ void loop() {
 }
 ```
 
+## Supported Arduino Boards:
+This module was tested with Arduino UNO, MEGA2560, NANO and Pro Mini boards. However, it must work on most Arduino boards.
+In case you find one which does not works, or possibly find a bug, please report and a fix will be released as soon as possible.
+
 ## Want to Contribute ?
 You are welcome to contribute! Please contact me: dimircea[at]gmail.com.
 
