@@ -18,6 +18,9 @@ Currently, the following AT commands are supported:
 Most of the above methods allows to specify a timeout before a communication fail/error is reported. 
 Many methods have multiple signatures, with default values for some standard parameters.
 
+## Installation
+Clone this repo, rename the folder to ESP8266 and copy it under the `libraries` subfolder of your Arduino Software installation folder. 
+
 ## Usage Example
 ```
 #include <ESP8266.h>
