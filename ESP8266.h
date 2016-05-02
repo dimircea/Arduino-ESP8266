@@ -63,8 +63,12 @@ class ESP8266 {
       Channel channel = Channel::CH_5, 
       Encription enc = Encription::WPA2_PSK, 
       uint16_t timeout = 2000);
+    Error atCwjap( const char* ssid, const char* passwd,
+      uint16_t timeout = 15000);
     Error atCipstartUdp( char* remoteIp = "0", uint16_t remotePort = 0, uint16_t localPort = 1025, 
       UdpMode mode = UdpMode::DESTINATION_DYNAMIC, uint16_t timeout = 5000);
+    Error atCipstartTcp( const char* remoteIp = "0", uint16_t remotePort = 0, 
+      uint16_t timeout = 5000);
     Error atCipclose( LinkId linkId = LinkId::NONE, uint16_t timeout = 500);
     Error ipd( char *&data, uint16_t &dataLen, LinkId &linkId, uint16_t waitTime = 0);
     inline Error ipd( char *&data, LinkId &linkId, uint16_t waitTime = 0) {
@@ -82,6 +86,8 @@ class ESP8266 {
     };
     
     Error atCipsend( char *data, LinkId linkId = LinkId::NONE, uint16_t timeout = 1000);
+    Error atCipsendHttpGet( char *path, char *data, 
+      LinkId linkId = LinkId::NONE, uint16_t timeout = 1000);
 
   private:
     char *cmdData;
@@ -100,11 +106,15 @@ const char ESP8266_ATE1[] PROGMEM = "ATE1";
 const char ESP8266_AT_RST[] PROGMEM = "AT+RST";
 const char ESP8266_AT_RST_READY[] PROGMEM = "ready";
 const char ESP8266_AT_CWSAP[] PROGMEM = "AT+CWSAP";
+const char ESP8266_AT_CWJAP[] PROGMEM = "AT+CWJAP";
 const char ESP8266_AT_CIPSTART[] PROGMEM = "AT+CIPSTART";
 const char ESP8266_AT_CIPCLOSE[] PROGMEM = "AT+CIPCLOSE";
 const char ESP8266_IPD[] PROGMEM = "+IPD";
+const char ESP8266_GOT_IP[] PROGMEM = "GOT IP";
 const char ESP8266_AT_CIPSEND[] PROGMEM = "AT+CIPSEND";
 const char ESP8266_AT_CIPSEND_SEND_OK[] PROGMEM = "SEND OK";
+const char ESP8266_HTTP_HEADER[] PROGMEM = "HTTP/1.0\r\n\r\n";
+const char ESP8266_HTTP_GET[] PROGMEM = "GET";
 const char ESP8266_CMD_END[] = "\r\n";
 const char ESP8266_OK[] = "OK";
 const char ESP8266_UDP[] = "UDP";
@@ -114,5 +124,6 @@ const char ESP8266_COMA = ',';
 const char ESP8266_DQUOTE = '"';
 const char ESP8266_EQUAL = '=';
 const char ESP8266_COLON = ':';
+const char ESP8266_WHITE_SPACE = ' ';
 const char ESP8266_GREATER_THAN = '>';
 #endif

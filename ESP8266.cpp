@@ -167,10 +167,36 @@ ESP8266::Error ESP8266::atCwsap( char* ssid, char* passwd,
   return this->checkTimeout( ESP8266_OK, timeout);
 };
 
+/************************************************************************/
+/* @method                                                              */
+/* Client  settings: execute AT+CWJAP                                   */
+/* @param timeout                                                       */
+/*          timeout in milliseconds for this command ( the time to wait */
+/*          for OK response before gave up)                             */
+/*          NOTE: default value is 2000                                 */
+/* @return ESP8266::Error_NONE if all OK, ESP8266::Error::XXX otherwise */
+/************************************************************************/
+ESP8266::Error ESP8266::atCwjap( const char* ssid, const char* passwd, uint16_t timeout) {
+    
+  getPMData( ESP8266_AT_CWJAP, this->cmdData, this->cmdLen);
+  // send AT+CWSAP command
+  this->serial.print( this->cmdData);
+  this->serial.print( ESP8266_EQUAL);
+  this->serial.print( ESP8266_DQUOTE);
+  this->serial.print( ssid);
+  this->serial.print( ESP8266_DQUOTE);
+  this->serial.print( ESP8266_COMA);
+  this->serial.print( ESP8266_DQUOTE);
+  this->serial.print( passwd);
+  this->serial.print( ESP8266_DQUOTE);
+  this->serial.print( ESP8266_CMD_END);
+  return this->checkTimeout( ESP8266_OK, timeout);
+};
+
 
 /************************************************************************/
 /* @method                                                              */
-/* Access point settings: execute AT+CIPSTART for UDP                   */
+/* Execute AT+CIPSTART for UDP                                          */
 /* @param remoteIp                                                      */
 /*          the IP of the remote side for the udp connection            */
 /* @param remotePort                                                    */
@@ -208,6 +234,40 @@ ESP8266::Error ESP8266::atCipstartUdp( char* remoteIp, uint16_t remotePort,
   this->serial.print( ESP8266_CMD_END);
   return this->checkTimeout( ESP8266_OK, timeout);
 };
+
+/************************************************************************/
+/* @method                                                              */
+/* Execute AT+CIPSTART for TCP                                          */
+/* @param remoteIp                                                      */
+/*          the IP of the remote side for the tcp connection            */
+/* @param remotePort                                                    */
+/*          the port of the remote side for the tcp connection          */
+/* @param timeout                                                       */
+/*          timeout in milliseconds for this command ( the time to wait */
+/*          for OK response before gave up)                             */
+/*          NOTE: default value is 5000                                 */
+/* @return ESP8266::Error_NONE if all OK, ESP8266::Error::XXX otherwise */
+/************************************************************************/
+ESP8266::Error ESP8266::atCipstartTcp( const char* remoteIp, uint16_t remotePort, 
+  uint16_t timeout) {
+
+  getPMData( ESP8266_AT_CIPSTART, this->cmdData, this->cmdLen);
+  // send AT+CIPSTART command
+  this->serial.print( this->cmdData);
+  this->serial.print( ESP8266_EQUAL);
+  this->serial.print( ESP8266_DQUOTE);
+  this->serial.print( ESP8266_TCP);
+  this->serial.print( ESP8266_DQUOTE);
+  this->serial.print( ESP8266_COMA);
+  this->serial.print( ESP8266_DQUOTE);
+  this->serial.print( remoteIp);
+  this->serial.print( ESP8266_DQUOTE);
+  this->serial.print( ESP8266_COMA);
+  this->serial.print( remotePort);
+  this->serial.print( ESP8266_CMD_END);
+  return this->checkTimeout( ESP8266_OK, timeout);
+};
+
 
 
 /************************************************************************/
@@ -335,6 +395,72 @@ ESP8266::Error ESP8266::atCipsend( char *data, LinkId linkId, uint16_t timeout) 
   if ( error != Error::NONE) return error;
   // send data
   this->serial.print( data);
+  this->serial.print( ESP8266_CMD_END);
+  // wait for SEND OK
+  remainingTimeout = timeout - ( millis() - this->cTime);
+  // ESP8266 "SEND OK" string is loaded from PROGMEM
+  getPMData( ESP8266_AT_CIPSEND_SEND_OK, this->cmdData, this->cmdLen);
+  if ( remainingTimeout < 0) return Error::TIMEOUT;
+  return this->checkTimeout( ESP8266_AT_CIPSEND_SEND_OK, remainingTimeout);
+};
+
+/************************************************************************/
+/* @method                                                              */
+/* Send HTTP GET request                                                */
+/* @param data                                                          */
+/*          data to send (must be \0 terminated!)                       */
+/* @param linkId                                                        */
+/*          the connection ID (obtained when AT+CIPSTART executed)      */
+/*          NOTE: this must be LinkId::NONE (default value) if the      */
+/*                value of CIPMUX = 0 and LinkId::ID_x if CIPMUX = 1    */
+/* @param timeout                                                       */
+/*          timeout in milliseconds to wait for SEND OK answer          */
+/*          NOTE: default value is 2000                                 */
+/* @return ESP8266::Error_NONE if all OK, ESP8266::Error::XXX otherwise */
+/************************************************************************/
+ESP8266::Error ESP8266::atCipsendHttpGet( char *path, char *data, 
+  LinkId linkId, uint16_t timeout) {
+    
+  Error error = Error::NONE;
+  uint16_t dataLen = 0, pathLen = 0;
+  char *pData = data;
+  long remainingTimeout = 0;
+  // compute lengt of the data to be sent
+  while ( (*(pData + dataLen++)) != 0);
+  dataLen--;
+  // compute lengt of the path where to send
+  pData = path;
+  while ( (*(pData + pathLen++)) != 0);
+  pathLen--;
+  // ESP8266 command string is loaded from PROGMEM
+  getPMData( ESP8266_AT_CIPSEND, this->cmdData, this->cmdLen);
+  // data to be send is empty...
+  if ( dataLen < 1) return Error::EMPTY_DATA;
+  // send AT+CIPSEND command
+  this->serial.print( this->cmdData);
+  this->serial.print( ESP8266_EQUAL);
+  // 17 = length(ESP8266_HTTP_HEADER + ESP8266_HTTP_GET + separator spaces)
+  this->serial.print( pathLen + dataLen + 17);   
+  this->serial.print( ESP8266_CMD_END);
+  // start recording elapsed time
+  this->cTime = millis();
+  // wait for OK
+  if ( this->checkTimeout( ESP8266_OK, timeout) != Error::NONE) return error;
+  // wait for '>'
+  remainingTimeout = timeout - ( millis() - this->cTime);
+  if ( remainingTimeout < 0) return Error::TIMEOUT;
+  error = this->checkTimeout( ESP8266_GREATER_THAN, remainingTimeout);
+  if ( error != Error::NONE) return error;
+  // send data
+  // ESP8266 command string is loaded from PROGMEM
+  getPMData( ESP8266_HTTP_GET, this->cmdData, this->cmdLen);
+  this->serial.print( this->cmdData);
+  this->serial.print( ESP8266_WHITE_SPACE);
+  this->serial.print( path);
+  this->serial.print( data);
+  this->serial.print( ESP8266_WHITE_SPACE);
+  getPMData( ESP8266_HTTP_HEADER, this->cmdData, this->cmdLen);
+  this->serial.print( this->cmdData);
   this->serial.print( ESP8266_CMD_END);
   // wait for SEND OK
   remainingTimeout = timeout - ( millis() - this->cTime);
